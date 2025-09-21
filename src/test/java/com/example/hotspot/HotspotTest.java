@@ -4,6 +4,8 @@ package com.example.hotspot;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Set;
+import java.util.HashSet;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -14,12 +16,10 @@ public class HotspotTest {
         int[] nums = {1,2,3,4,5};
         List<int[]> pairs = Hotspot.findPairs(nums, 6);
         // expected pairs: (1,5) and (2,4) - order not important
-        boolean has15 = false;
-        boolean has24 = false;
+        Set<String> seen = new HashSet<>();
         for (int[] p : pairs) {
-            if (p[0] == 1 && p[1] == 5) has15 = true;
-            if (p[0] == 2 && p[1] == 4) has24 = true;
+            seen.add(p[0] + "," + p[1]);
         }
-        assertTrue(has15 && has24, "Should find (1,5) and (2,4)"); 
+        assertTrue(seen.contains("1,5") && seen.contains("2,4"), "Should find (1,5) and (2,4)");
     }
 }

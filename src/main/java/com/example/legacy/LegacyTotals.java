@@ -10,36 +10,46 @@ import java.util.*;
  * - No separation of concerns and limited validation
  */
 public class LegacyTotals {
-    public static List<Map<String, Object>> computeTotals(String data) {
-        String[] rows = data.split("\n");
-        Map<String, double[]> result = new HashMap<>();
-        for (int i = 0; i < rows.length; i++) {
-            String r = rows[i];
-            if (r.equals("")) continue;
-            String[] parts = r.split(",");
+    public static List<TotalsEntry> computeTotals(String data) {
+        if (data == null || data.isEmpty()) return Collections.emptyList();
+        String[] rows = data.split("\\r?\\n");
+        Map<String, Summary> summary = new LinkedHashMap<>();
+        for (String row : rows) {
+            if (row == null || row.trim().isEmpty()) continue;
+            String[] parts = row.split(",", 2);
+            if (parts.length < 2) continue;
             String user = parts[0].trim();
-            double price = 0;
+            String raw = parts[1].trim();
+            double price;
             try {
-                price = Double.parseDouble(parts[1]);
+                price = Double.parseDouble(raw);
             } catch (Exception e) {
-                String cleaned = parts[1].replaceAll("[^\\d.-]", "");
-                try { price = Double.parseDouble(cleaned); } catch (Exception ex) { continue; }
+                // try to clean non-numeric chars
+                String cleaned = raw.replaceAll("[^\\d.-]", "");
+                try {
+                    price = Double.parseDouble(cleaned);
+                } catch (Exception ex) {
+                    continue;
+                }
             }
-            if (!result.containsKey(user)) result.put(user, new double[]{0.0, 0.0});
-            double[] cur = result.get(user);
-            cur[0] = cur[0] + price;
-            cur[1] = cur[1] + 1;
-            result.put(user, cur);
+            if (!Double.isFinite(price)) continue;
+            if (price < 0) continue; // ignore negative prices
+            Summary s = summary.computeIfAbsent(user, k -> new Summary());
+            s.total += price;
+            s.count += 1;
         }
-        List<Map<String, Object>> out = new ArrayList<>();
-        for (String u : result.keySet()) {
-            double[] v = result.get(u);
-            Map<String,Object> m = new HashMap<>();
-            m.put("user", u);
-            m.put("total", v[0]);
-            m.put("average", v[0] / v[1]);
-            out.add(m);
+        List<TotalsEntry> out = new ArrayList<>();
+        for (Map.Entry<String, Summary> e : summary.entrySet()) {
+            Summary s = e.getValue();
+            double avg = s.count > 0 ? s.total / s.count : 0.0;
+            out.add(new TotalsEntry(e.getKey(), s.total, avg));
         }
         return out;
+    }
+
+    // helper class to accumulate totals
+    private static class Summary {
+        double total = 0.0;
+        int count = 0;
     }
 }

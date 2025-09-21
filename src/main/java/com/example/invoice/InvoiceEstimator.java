@@ -3,14 +3,9 @@ package com.example.invoice;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 
-/*
- * Intentionally bad code:
- * - Uses a primitive 2D array for items (instead of a proper Item class)
- * - Rounds tax incorrectly using Math.round without scaling
- * - No input validation for negative qty or price types are assumed valid
- * - Duplicated code and poor naming
- */
 public class InvoiceEstimator {
 
     // items: double[][] where each row is {price, qty}
@@ -20,16 +15,26 @@ public class InvoiceEstimator {
         }
         double subtotal = 0.0;
         for (int i = 0; i < items.length; i++) {
-            try {
-                double price = items[i][0];
-                double qty = items[i][1];
-                subtotal += price * qty;
-            } catch (Exception e) {
-                // swallow exceptions and continue - bad practice
+            // basic validation: row must have at least 2 elements and values must be finite and non-negative
+            if (items[i] == null || items[i].length < 2) {
+                continue;
             }
+            double price = items[i][0];
+            double qty = items[i][1];
+            // skip invalid numbers (NaN/Infinity) and negative values
+            if (!Double.isFinite(price) || !Double.isFinite(qty)) {
+                continue;
+            }
+            if (price < 0 || qty < 0) {
+                continue;
+            }
+            subtotal += price * qty;
         }
-        // BUG: incorrect rounding - Math.round returns long and without scaling leads to integer rounding
-        double tax = Math.round(subtotal * taxRate);
+        // Round tax to 2 decimal places (HALF_UP)
+        double taxUnrounded = subtotal * taxRate;
+        double tax = BigDecimal.valueOf(taxUnrounded)
+                .setScale(2, RoundingMode.HALF_UP)
+                .doubleValue();
         double total = subtotal + tax;
         Map<String, Double> out = new HashMap<>();
         out.put("subtotal", subtotal);
